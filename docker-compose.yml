@@ -1,0 +1,30 @@
+services:
+  orclipper:
+    build: .
+    container_name: orclipper
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./app.py:/app/app.py:ro
+      - ./profiles:/profiles:ro
+      - ./orcaslicer-config:/root/.config/OrcaSlicer
+    ports:
+      - "8085:8000"
+    entrypoint: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+
+  extract-profiles:
+    build: .
+    profiles: ["tools"]
+    volumes:
+      - ./profiles:/profiles
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        found=0
+        for f in /profiles/*.3mf; do
+          [ -f "$$f" ] || continue
+          found=1
+          python3 /app/extract_profiles.py "$$f" /profiles
+        done
+        [ "$$found" -eq 1 ] || echo "No .3mf files found in /profiles"
